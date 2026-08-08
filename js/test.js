@@ -23,11 +23,95 @@ let startTime = 0;
 let studentName = '';
 let rollNo = '';
 // ============================================================
+// DOM ELEMENTS
+// ============================================================
+const loadMsg =
+    document.getElementById('loadMsg');
+const loading =
+    document.getElementById('loading');
+const start =
+    document.getElementById('start');
+const exam =
+    document.getElementById('exam');
+const testTitle =
+    document.getElementById('testTitle');
+const startTitle =
+    document.getElementById('startTitle');
+const testInfo =
+    document.getElementById('testInfo');
+const startBtn =
+    document.getElementById('startBtn');
+const timer =
+    document.getElementById('timer');
+const progress =
+    document.getElementById('progress');
+const answeredCount =
+    document.getElementById('answeredCount');
+const question =
+    document.getElementById('question');
+const prevBtn =
+    document.getElementById('prevBtn');
+const nextBtn =
+    document.getElementById('nextBtn');
+const submitBtn =
+    document.getElementById('submitBtn');
+const numbers =
+    document.getElementById('numbers');
+// ============================================================
+// CHECK REQUIRED HTML ELEMENTS
+// ============================================================
+function checkElements() {
+    const required = {
+        loadMsg,
+        loading,
+        start,
+        exam,
+        testTitle,
+        startTitle,
+        testInfo,
+        startBtn,
+        timer,
+        progress,
+        answeredCount,
+        question,
+        prevBtn,
+        nextBtn,
+        submitBtn,
+        numbers
+    };
+    const missing =
+        Object.keys(required)
+            .filter(
+                key => !required[key]
+            );
+    if (missing.length > 0) {
+        console.error(
+            'Missing HTML elements:',
+            missing
+        );
+        return false;
+    }
+    return true;
+}
+// ============================================================
 // INITIALIZE
 // ============================================================
 function init() {
+    // --------------------------------------------------------
+    // Check HTML elements first
+    // --------------------------------------------------------
+    if (!checkElements()) {
+        alert(
+            'Test page error: Some required HTML elements are missing. Check test.html IDs.'
+        );
+        return;
+    }
     try {
-        const token = tokenFromUrl();
+        // ----------------------------------------------------
+        // GET TOKEN FROM URL
+        // ----------------------------------------------------
+        const token =
+            tokenFromUrl();
         // ----------------------------------------------------
         // NO TOKEN
         // ----------------------------------------------------
@@ -44,13 +128,16 @@ function init() {
         //
         // DO NOT USE await.
         // ----------------------------------------------------
-        test = decodeTest(token);
+        test =
+            decodeTest(token);
         // ----------------------------------------------------
         // INVALID TEST
         // ----------------------------------------------------
         if (
             !test ||
-            !Array.isArray(test.questions) ||
+            !Array.isArray(
+                test.questions
+            ) ||
             test.questions.length === 0
         ) {
             loadMsg.textContent =
@@ -58,24 +145,42 @@ function init() {
             return;
         }
         // ----------------------------------------------------
+        // VALIDATE TITLE
+        // ----------------------------------------------------
+        if (
+            !test.title ||
+            String(test.title).trim() === ''
+        ) {
+            test.title =
+                'Mock Test';
+        }
+        // ----------------------------------------------------
         // VALIDATE MINUTES
         // ----------------------------------------------------
-        test.minutes = Math.max(
-            1,
-            Number(test.minutes) || 30
-        );
+        test.minutes =
+            Math.max(
+                1,
+                Number(
+                    test.minutes
+                ) || 30
+            );
         // ----------------------------------------------------
+        // HIDE LOADING
         // SHOW START SCREEN
         // ----------------------------------------------------
-        loading.classList.add('hidden');
-        start.classList.remove('hidden');
+        loading.classList.add(
+            'hidden'
+        );
+        start.classList.remove(
+            'hidden'
+        );
         // ----------------------------------------------------
         // TEST INFORMATION
         // ----------------------------------------------------
         testTitle.textContent =
-            test.title || 'Mock Test';
+            test.title;
         startTitle.textContent =
-            test.title || 'Mock Test';
+            test.title;
         testInfo.textContent =
             test.questions.length +
             ' questions • ' +
@@ -88,25 +193,33 @@ function init() {
         );
         loadMsg.textContent =
             'Unable to load the test: ' +
-            (error.message || String(error));
+            (
+                error.message ||
+                String(error)
+            );
     }
 }
 // ============================================================
 // START BUTTON
 // ============================================================
-startBtn.onclick = begin;
+startBtn.onclick =
+    begin;
 // ============================================================
 // BEGIN TEST
 // ============================================================
 function begin() {
     studentName =
         document
-            .getElementById('studentName')
+            .getElementById(
+                'studentName'
+            )
             .value
             .trim();
     rollNo =
         document
-            .getElementById('rollNo')
+            .getElementById(
+                'rollNo'
+            )
             .value
             .trim();
     // --------------------------------------------------------
@@ -117,7 +230,9 @@ function begin() {
             'Please enter your name.'
         );
         document
-            .getElementById('studentName')
+            .getElementById(
+                'studentName'
+            )
             .focus();
         return;
     }
@@ -131,19 +246,31 @@ function begin() {
     startTime =
         Date.now();
     // --------------------------------------------------------
-    // SHOW EXAM
-    // --------------------------------------------------------
-    start.classList.add('hidden');
-    exam.classList.remove('hidden');
-    // --------------------------------------------------------
     // RESET TIMER
     // --------------------------------------------------------
-    clearInterval(timerId);
-    timer.classList.remove('urgent');
+    clearInterval(
+        timerId
+    );
+    timer.classList.remove(
+        'urgent'
+    );
+    // --------------------------------------------------------
+    // SHOW EXAM
+    // --------------------------------------------------------
+    start.classList.add(
+        'hidden'
+    );
+    exam.classList.remove(
+        'hidden'
+    );
     // --------------------------------------------------------
     // RENDER FIRST QUESTION
     // --------------------------------------------------------
     render();
+    // --------------------------------------------------------
+    // SHOW INITIAL TIMER
+    // --------------------------------------------------------
+    updateTimer();
     // --------------------------------------------------------
     // START TIMER
     // --------------------------------------------------------
@@ -152,10 +279,9 @@ function begin() {
             tick,
             1000
         );
-    updateTimer();
 }
 // ============================================================
-// TIMER
+// UPDATE TIMER
 // ============================================================
 function updateTimer() {
     if (seconds < 0) {
@@ -163,6 +289,9 @@ function updateTimer() {
     }
     timer.textContent =
         fmt(seconds);
+    // --------------------------------------------------------
+    // LAST 60 SECONDS
+    // --------------------------------------------------------
     if (seconds <= 60) {
         timer.classList.add(
             'urgent'
@@ -179,7 +308,9 @@ function tick() {
     // TIME FINISHED
     // --------------------------------------------------------
     if (seconds <= 0) {
-        clearInterval(timerId);
+        clearInterval(
+            timerId
+        );
         finish(true);
     }
 }
@@ -204,14 +335,18 @@ function render() {
     // ANSWERED COUNT
     // --------------------------------------------------------
     answeredCount.textContent =
-        Object.keys(answers).length +
+        Object.keys(
+            answers
+        ).length +
         ' answered';
     // --------------------------------------------------------
     // QUESTION
     // --------------------------------------------------------
     question.innerHTML =
         '<h2>' +
-        esc(q.question) +
+        esc(
+            q.question
+        ) +
         '</h2>' +
         Object.entries(
             q.options || {}
@@ -241,10 +376,12 @@ function render() {
         )
         .join('');
     // --------------------------------------------------------
-    // OPTION CLICK
+    // OPTION BUTTONS
     // --------------------------------------------------------
     question
-        .querySelectorAll('.option')
+        .querySelectorAll(
+            '.option'
+        )
         .forEach(
             function (button) {
                 button.onclick =
@@ -295,10 +432,12 @@ function render() {
             )
             .join('');
     // --------------------------------------------------------
-    // QUESTION NUMBER CLICK
+    // QUESTION NUMBER NAVIGATION
     // --------------------------------------------------------
     numbers
-        .querySelectorAll('.qnum')
+        .querySelectorAll(
+            '.qnum'
+        )
         .forEach(
             function (button, n) {
                 button.onclick =
@@ -310,7 +449,7 @@ function render() {
         );
 }
 // ============================================================
-// PREVIOUS
+// PREVIOUS BUTTON
 // ============================================================
 prevBtn.onclick =
     function () {
@@ -320,7 +459,7 @@ prevBtn.onclick =
         }
     };
 // ============================================================
-// NEXT
+// NEXT BUTTON
 // ============================================================
 nextBtn.onclick =
     function () {
@@ -333,7 +472,7 @@ nextBtn.onclick =
         }
     };
 // ============================================================
-// SUBMIT
+// SUBMIT BUTTON
 // ============================================================
 submitBtn.onclick =
     function () {
@@ -348,7 +487,9 @@ function finish(auto) {
     // --------------------------------------------------------
     if (
         !test ||
-        !Array.isArray(test.questions)
+        !Array.isArray(
+            test.questions
+        )
     ) {
         return;
     }
@@ -367,7 +508,9 @@ function finish(auto) {
     // --------------------------------------------------------
     // STOP TIMER
     // --------------------------------------------------------
-    clearInterval(timerId);
+    clearInterval(
+        timerId
+    );
     // --------------------------------------------------------
     // CALCULATE CORRECT
     // --------------------------------------------------------
@@ -401,7 +544,9 @@ function finish(auto) {
                 test.questions.find(
                     function (item) {
                         return (
-                            String(item.id) ===
+                            String(
+                                item.id
+                            ) ===
                             String(id)
                         );
                     }
@@ -444,11 +589,11 @@ function finish(auto) {
             ) / 1000
         );
     // --------------------------------------------------------
-    // RESULT
+    // RESULT OBJECT
     // --------------------------------------------------------
     const result = {
         title:
-            test.title || 'Mock Test',
+            test.title,
         name:
             studentName,
         roll:
@@ -480,7 +625,9 @@ function finish(auto) {
     try {
         sessionStorage.setItem(
             'mockResult',
-            JSON.stringify(result)
+            JSON.stringify(
+                result
+            )
         );
     } catch (error) {
         console.error(

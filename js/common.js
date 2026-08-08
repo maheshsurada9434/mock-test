@@ -37,21 +37,14 @@ export function parseMCQs(text) {
         return [];
     }
     // --------------------------------------------------------
-    // Fix questions accidentally joined to previous answer
-    //
+    // Fix joined questions
     // Example:
-    // Answer: A) Delhi2. What is...
-    //
-    // becomes:
-    // Answer: A) Delhi
-    // 2. What is...
+    // Delhi2. What is...
     // --------------------------------------------------------
     text = text.replace(
         /(?<!^)\s+(?=\d+\.\s+)/g,
         '\n'
     );
-    // Also handle:
-    // Delhi2. What is...
     text = text.replace(
         /([^\d\s])(\d+)\.\s+/g,
         '$1\n$2. '
@@ -103,8 +96,10 @@ export function parseMCQs(text) {
         // ----------------------------------------------------
         // FIND ANSWER
         //
-        // Answer: A) Something
+        // Supports:
         // Answer: A
+        // Answer: A)
+        // Answer: A) Delhi
         // Correct Answer: A
         // ----------------------------------------------------
         let answer = null;
@@ -125,11 +120,6 @@ export function parseMCQs(text) {
         }
         // ----------------------------------------------------
         // FIND OPTIONS
-        //
-        // A) ...
-        // B) ...
-        // C) ...
-        // D) ...
         // ----------------------------------------------------
         const optionRegex =
             /(?:^|\s)([A-D])\)\s*(.*?)(?=\s+[A-D]\)\s+|$)/gs;
@@ -148,7 +138,7 @@ export function parseMCQs(text) {
             }
         }
         // ----------------------------------------------------
-        // Require at least 2 options
+        // Need at least two options
         // ----------------------------------------------------
         if (
             Object.keys(options).length < 2
@@ -156,8 +146,7 @@ export function parseMCQs(text) {
             continue;
         }
         // ----------------------------------------------------
-        // QUESTION TEXT
-        // Everything before first option
+        // FIND QUESTION TEXT
         // ----------------------------------------------------
         const firstOption =
             block.search(
@@ -180,7 +169,7 @@ export function parseMCQs(text) {
             continue;
         }
         // ----------------------------------------------------
-        // SAVE QUESTION
+        // SAVE
         // ----------------------------------------------------
         output.push({
             id:
@@ -199,13 +188,11 @@ export function parseMCQs(text) {
 // ENCODE TEST
 // ============================================================
 //
-// IMPORTANT:
+// Current format:
 //
-// This is SYNCHRONOUS.
+// u + encodeURIComponent(JSON)
 //
-// It returns a STRING.
-//
-// Generated format:
+// Example:
 //
 // #t=u%7B%22v%22%3A1...%7D
 //
@@ -235,16 +222,15 @@ export function encodeTest(obj) {
 // DECODE TEST
 // ============================================================
 //
-// IMPORTANT:
+// Supports:
 //
-// This function is SYNCHRONOUS for the current "u" format.
+// u%7B%22v%22%3A1...%7D
 //
-// Therefore test.js can safely use:
+// Also accepts:
+// u%257B...  (double encoded)
 //
-// const test = decodeTest(token);
-//
-// No await is required.
-//
+// Also supports old g compressed links
+// through decodeTestAsync().
 // ============================================================
 export function decodeTest(token) {
     if (!token) {
@@ -254,26 +240,43 @@ export function decodeTest(token) {
         token =
             String(token).trim();
         // ----------------------------------------------------
-        // CURRENT FORMAT
-        //
-        // u%7B%22v%22%3A1...
+        // CURRENT "u" FORMAT
         // ----------------------------------------------------
         if (
             token.charAt(0) === 'u'
         ) {
-            const encoded =
+            let encoded =
                 token.slice(1);
             if (!encoded) {
                 return null;
             }
-            const json =
+            // ------------------------------------------------
+            // Decode once
+            // ------------------------------------------------
+            let json =
                 decodeURIComponent(
                     encoded
                 );
+            // ------------------------------------------------
+            // Handle accidental double encoding
+            // ------------------------------------------------
+            if (
+                json.charAt(0) !== '{' &&
+                json.charAt(0) !== '['
+            ) {
+                try {
+                    json =
+                        decodeURIComponent(
+                            json
+                        );
+                } catch (e) {
+                    // Keep original decoded value
+                }
+            }
             const data =
                 JSON.parse(json);
             // ------------------------------------------------
-            // Validate decoded test
+            // Validate
             // ------------------------------------------------
             if (
                 !data ||
@@ -292,22 +295,24 @@ export function decodeTest(token) {
                     'Test contains no questions.'
                 );
             }
+            if (
+                data.questions.length === 0
+            ) {
+                throw new Error(
+                    'Test contains zero questions.'
+                );
+            }
             return data;
         }
         // ----------------------------------------------------
         // OLD COMPRESSED FORMAT
-        //
-        // NOTE:
-        // This format requires asynchronous decompression.
-        //
-        // It is kept separately for compatibility.
         // ----------------------------------------------------
         if (
             token.charAt(0) === 'g'
         ) {
             console.warn(
-                'Old compressed test link detected. ' +
-                'Use decodeTestAsync() for old g-links.'
+                'Old compressed link detected. ' +
+                'Use decodeTestAsync() for g-links.'
             );
             return null;
         }
@@ -327,9 +332,9 @@ export function decodeTest(token) {
 // ASYNC DECODE TEST
 // ============================================================
 //
-// Used only for OLD compressed "g" links.
-//
-// New "u" links do NOT need this function.
+// Supports both:
+// u = current format
+// g = old gzip format
 //
 // ============================================================
 export async function decodeTestAsync(token) {
@@ -380,7 +385,17 @@ export async function decodeTestAsync(token) {
             const json =
                 new TextDecoder()
                     .decode(buffer);
-            return JSON.parse(json);
+            const data =
+                JSON.parse(json);
+            if (
+                !data ||
+                !Array.isArray(
+                    data.questions
+                )
+            ) {
+                return null;
+            }
+            return data;
         } catch (error) {
             console.error(
                 'Compressed test decoding error:',
@@ -424,7 +439,7 @@ function b64ToBytes(str) {
 // GET TEST TOKEN FROM URL
 // ============================================================
 //
-// Supported:
+// Supports:
 //
 // test.html#t=xxxxx
 //
@@ -436,7 +451,7 @@ export function tokenFromUrl() {
     // HASH
     // --------------------------------------------------------
     const hash =
-        location.hash || '';
+        window.location.hash || '';
     if (
         hash.startsWith('#t=')
     ) {
@@ -447,19 +462,12 @@ export function tokenFromUrl() {
     // --------------------------------------------------------
     const params =
         new URLSearchParams(
-            location.search
+            window.location.search
         );
     return params.get('t');
 }
 // ============================================================
 // TIMER FORMAT
-// ============================================================
-//
-// 0     -> 00:00
-// 65    -> 01:05
-// 125   -> 02:05
-// 3600  -> 60:00
-//
 // ============================================================
 export function fmt(sec) {
     sec =
@@ -470,9 +478,7 @@ export function fmt(sec) {
             )
         );
     const minutes =
-        Math.floor(
-            sec / 60
-        );
+        Math.floor(sec / 60);
     const seconds =
         sec % 60;
     return (

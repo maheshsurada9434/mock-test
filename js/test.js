@@ -27,10 +27,9 @@ let rollNo = '';
 // ============================================================
 function init() {
     try {
-        const token =
-            tokenFromUrl();
+        const token = tokenFromUrl();
         // ----------------------------------------------------
-        // No token
+        // NO TOKEN
         // ----------------------------------------------------
         if (!token) {
             loadMsg.textContent =
@@ -38,14 +37,16 @@ function init() {
             return;
         }
         // ----------------------------------------------------
+        // DECODE TEST
+        //
         // IMPORTANT:
-        // decodeTest() is now SYNCHRONOUS
-        // Do NOT use await here.
+        // decodeTest() is SYNCHRONOUS.
+        //
+        // DO NOT USE await.
         // ----------------------------------------------------
-        test =
-            decodeTest(token);
+        test = decodeTest(token);
         // ----------------------------------------------------
-        // Invalid test
+        // INVALID TEST
         // ----------------------------------------------------
         if (
             !test ||
@@ -57,32 +58,24 @@ function init() {
             return;
         }
         // ----------------------------------------------------
-        // Make sure minutes is valid
+        // VALIDATE MINUTES
         // ----------------------------------------------------
-        test.minutes =
-            Math.max(
-                1,
-                Number(test.minutes) || 30
-            );
-        // ----------------------------------------------------
-        // Hide loading
-        // Show start screen
-        // ----------------------------------------------------
-        loading.classList.add(
-            'hidden'
-        );
-        start.classList.remove(
-            'hidden'
+        test.minutes = Math.max(
+            1,
+            Number(test.minutes) || 30
         );
         // ----------------------------------------------------
-        // Test information
+        // SHOW START SCREEN
+        // ----------------------------------------------------
+        loading.classList.add('hidden');
+        start.classList.remove('hidden');
+        // ----------------------------------------------------
+        // TEST INFORMATION
         // ----------------------------------------------------
         testTitle.textContent =
-            test.title ||
-            'Mock Test';
+            test.title || 'Mock Test';
         startTitle.textContent =
-            test.title ||
-            'Mock Test';
+            test.title || 'Mock Test';
         testInfo.textContent =
             test.questions.length +
             ' questions • ' +
@@ -95,49 +88,41 @@ function init() {
         );
         loadMsg.textContent =
             'Unable to load the test: ' +
-            (error.message ||
-            String(error));
+            (error.message || String(error));
     }
 }
 // ============================================================
-// START TEST
+// START BUTTON
 // ============================================================
-startBtn.onclick =
-    begin;
+startBtn.onclick = begin;
 // ============================================================
-// BEGIN
+// BEGIN TEST
 // ============================================================
 function begin() {
     studentName =
         document
-            .getElementById(
-                'studentName'
-            )
+            .getElementById('studentName')
             .value
             .trim();
     rollNo =
         document
-            .getElementById(
-                'rollNo'
-            )
+            .getElementById('rollNo')
             .value
             .trim();
     // --------------------------------------------------------
-    // Student name required
+    // NAME REQUIRED
     // --------------------------------------------------------
     if (!studentName) {
         alert(
             'Please enter your name.'
         );
         document
-            .getElementById(
-                'studentName'
-            )
+            .getElementById('studentName')
             .focus();
         return;
     }
     // --------------------------------------------------------
-    // Reset
+    // RESET TEST
     // --------------------------------------------------------
     idx = 0;
     answers = {};
@@ -146,56 +131,55 @@ function begin() {
     startTime =
         Date.now();
     // --------------------------------------------------------
-    // Show exam
+    // SHOW EXAM
     // --------------------------------------------------------
-    start.classList.add(
-        'hidden'
-    );
-    exam.classList.remove(
-        'hidden'
-    );
+    start.classList.add('hidden');
+    exam.classList.remove('hidden');
     // --------------------------------------------------------
-    // Render first question
+    // RESET TIMER
+    // --------------------------------------------------------
+    clearInterval(timerId);
+    timer.classList.remove('urgent');
+    // --------------------------------------------------------
+    // RENDER FIRST QUESTION
     // --------------------------------------------------------
     render();
     // --------------------------------------------------------
-    // Start timer
+    // START TIMER
     // --------------------------------------------------------
-    clearInterval(
-        timerId
-    );
     timerId =
         setInterval(
             tick,
             1000
         );
-    tick();
+    updateTimer();
 }
 // ============================================================
 // TIMER
 // ============================================================
-function tick() {
-    seconds--;
+function updateTimer() {
     if (seconds < 0) {
         seconds = 0;
     }
     timer.textContent =
         fmt(seconds);
-    // --------------------------------------------------------
-    // Last 60 seconds
-    // --------------------------------------------------------
     if (seconds <= 60) {
         timer.classList.add(
             'urgent'
         );
     }
+}
+// ============================================================
+// TIMER TICK
+// ============================================================
+function tick() {
+    seconds--;
+    updateTimer();
     // --------------------------------------------------------
-    // Time finished
+    // TIME FINISHED
     // --------------------------------------------------------
     if (seconds <= 0) {
-        clearInterval(
-            timerId
-        );
+        clearInterval(timerId);
         finish(true);
     }
 }
@@ -209,7 +193,7 @@ function render() {
         return;
     }
     // --------------------------------------------------------
-    // Progress
+    // PROGRESS
     // --------------------------------------------------------
     progress.textContent =
         'Question ' +
@@ -217,15 +201,13 @@ function render() {
         ' of ' +
         test.questions.length;
     // --------------------------------------------------------
-    // Answered count
+    // ANSWERED COUNT
     // --------------------------------------------------------
     answeredCount.textContent =
-        Object.keys(
-            answers
-        ).length +
+        Object.keys(answers).length +
         ' answered';
     // --------------------------------------------------------
-    // Question
+    // QUESTION
     // --------------------------------------------------------
     question.innerHTML =
         '<h2>' +
@@ -259,12 +241,10 @@ function render() {
         )
         .join('');
     // --------------------------------------------------------
-    // Option buttons
+    // OPTION CLICK
     // --------------------------------------------------------
     question
-        .querySelectorAll(
-            '.option'
-        )
+        .querySelectorAll('.option')
         .forEach(
             function (button) {
                 button.onclick =
@@ -276,37 +256,37 @@ function render() {
             }
         );
     // --------------------------------------------------------
-    // Previous
+    // PREVIOUS BUTTON
     // --------------------------------------------------------
     prevBtn.disabled =
         idx === 0;
     // --------------------------------------------------------
-    // Next
+    // NEXT BUTTON
     // --------------------------------------------------------
     nextBtn.disabled =
         idx ===
         test.questions.length - 1;
     // --------------------------------------------------------
-    // Question numbers
+    // QUESTION NUMBERS
     // --------------------------------------------------------
     numbers.innerHTML =
         test.questions
             .map(
                 function (item, n) {
+                    const answered =
+                        answers[item.id]
+                            ? 'answered '
+                            : '';
+                    const current =
+                        n === idx
+                            ? 'current'
+                            : '';
                     return (
                         '<button ' +
                         'type="button" ' +
                         'class="qnum ' +
-                        (
-                            answers[item.id]
-                                ? 'answered '
-                                : ''
-                        ) +
-                        (
-                            n === idx
-                                ? 'current'
-                                : ''
-                        ) +
+                        answered +
+                        current +
                         '">' +
                         (n + 1) +
                         '</button>'
@@ -315,12 +295,10 @@ function render() {
             )
             .join('');
     // --------------------------------------------------------
-    // Question number navigation
+    // QUESTION NUMBER CLICK
     // --------------------------------------------------------
     numbers
-        .querySelectorAll(
-            '.qnum'
-        )
+        .querySelectorAll('.qnum')
         .forEach(
             function (button, n) {
                 button.onclick =
@@ -332,7 +310,7 @@ function render() {
         );
 }
 // ============================================================
-// PREVIOUS BUTTON
+// PREVIOUS
 // ============================================================
 prevBtn.onclick =
     function () {
@@ -342,7 +320,7 @@ prevBtn.onclick =
         }
     };
 // ============================================================
-// NEXT BUTTON
+// NEXT
 // ============================================================
 nextBtn.onclick =
     function () {
@@ -355,7 +333,7 @@ nextBtn.onclick =
         }
     };
 // ============================================================
-// SUBMIT BUTTON
+// SUBMIT
 // ============================================================
 submitBtn.onclick =
     function () {
@@ -366,34 +344,32 @@ submitBtn.onclick =
 // ============================================================
 function finish(auto) {
     // --------------------------------------------------------
-    // Prevent invalid state
+    // SAFETY CHECK
     // --------------------------------------------------------
     if (
         !test ||
-        !test.questions
+        !Array.isArray(test.questions)
     ) {
         return;
     }
     // --------------------------------------------------------
-    // Manual submit confirmation
+    // MANUAL SUBMIT CONFIRMATION
     // --------------------------------------------------------
     if (!auto) {
-        if (
-            !confirm(
+        const confirmed =
+            confirm(
                 'Are you sure you want to submit the test?'
-            )
-        ) {
+            );
+        if (!confirmed) {
             return;
         }
     }
     // --------------------------------------------------------
-    // Stop timer
+    // STOP TIMER
     // --------------------------------------------------------
-    clearInterval(
-        timerId
-    );
+    clearInterval(timerId);
     // --------------------------------------------------------
-    // Calculate correct answers
+    // CALCULATE CORRECT
     // --------------------------------------------------------
     let correct = 0;
     test.questions.forEach(
@@ -407,14 +383,14 @@ function finish(auto) {
         }
     );
     // --------------------------------------------------------
-    // Attempted
+    // ATTEMPTED
     // --------------------------------------------------------
     const attempted =
         Object.keys(
             answers
         ).length;
     // --------------------------------------------------------
-    // Wrong
+    // WRONG
     // --------------------------------------------------------
     let wrong = 0;
     Object.keys(
@@ -440,13 +416,13 @@ function finish(auto) {
         }
     );
     // --------------------------------------------------------
-    // Unanswered
+    // UNANSWERED
     // --------------------------------------------------------
     const unanswered =
         test.questions.length -
         attempted;
     // --------------------------------------------------------
-    // Percentage
+    // PERCENTAGE
     // --------------------------------------------------------
     const percent =
         test.questions.length > 0
@@ -458,7 +434,7 @@ function finish(auto) {
             )
             : 0;
     // --------------------------------------------------------
-    // Time taken
+    // TIME TAKEN
     // --------------------------------------------------------
     const timeTaken =
         Math.round(
@@ -468,11 +444,11 @@ function finish(auto) {
             ) / 1000
         );
     // --------------------------------------------------------
-    // Result
+    // RESULT
     // --------------------------------------------------------
     const result = {
         title:
-            test.title,
+            test.title || 'Mock Test',
         name:
             studentName,
         roll:
@@ -499,14 +475,12 @@ function finish(auto) {
             auto
     };
     // --------------------------------------------------------
-    // Save result
+    // SAVE RESULT
     // --------------------------------------------------------
     try {
         sessionStorage.setItem(
             'mockResult',
-            JSON.stringify(
-                result
-            )
+            JSON.stringify(result)
         );
     } catch (error) {
         console.error(
@@ -519,7 +493,7 @@ function finish(auto) {
         return;
     }
     // --------------------------------------------------------
-    // Go to result page
+    // OPEN RESULT PAGE
     // --------------------------------------------------------
     window.location.href =
         'result.html';

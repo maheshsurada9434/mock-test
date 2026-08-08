@@ -22,6 +22,7 @@ let timerId = null;
 let startTime = 0;
 let studentName = '';
 let rollNo = '';
+let finished = false;
 // ============================================================
 // DOM ELEMENTS
 // ============================================================
@@ -97,9 +98,6 @@ function checkElements() {
 // INITIALIZE
 // ============================================================
 function init() {
-    // --------------------------------------------------------
-    // Check HTML elements first
-    // --------------------------------------------------------
     if (!checkElements()) {
         alert(
             'Test page error: Some required HTML elements are missing. Check test.html IDs.'
@@ -108,7 +106,7 @@ function init() {
     }
     try {
         // ----------------------------------------------------
-        // GET TOKEN FROM URL
+        // GET TOKEN
         // ----------------------------------------------------
         const token =
             tokenFromUrl();
@@ -122,11 +120,6 @@ function init() {
         }
         // ----------------------------------------------------
         // DECODE TEST
-        //
-        // IMPORTANT:
-        // decodeTest() is SYNCHRONOUS.
-        //
-        // DO NOT USE await.
         // ----------------------------------------------------
         test =
             decodeTest(token);
@@ -145,7 +138,7 @@ function init() {
             return;
         }
         // ----------------------------------------------------
-        // VALIDATE TITLE
+        // DEFAULT TITLE
         // ----------------------------------------------------
         if (
             !test.title ||
@@ -165,7 +158,6 @@ function init() {
                 ) || 30
             );
         // ----------------------------------------------------
-        // HIDE LOADING
         // SHOW START SCREEN
         // ----------------------------------------------------
         loading.classList.add(
@@ -208,20 +200,22 @@ startBtn.onclick =
 // BEGIN TEST
 // ============================================================
 function begin() {
+    const nameInput =
+        document.getElementById(
+            'studentName'
+        );
+    const rollInput =
+        document.getElementById(
+            'rollNo'
+        );
     studentName =
-        document
-            .getElementById(
-                'studentName'
-            )
-            .value
-            .trim();
+        nameInput
+            ? nameInput.value.trim()
+            : '';
     rollNo =
-        document
-            .getElementById(
-                'rollNo'
-            )
-            .value
-            .trim();
+        rollInput
+            ? rollInput.value.trim()
+            : '';
     // --------------------------------------------------------
     // NAME REQUIRED
     // --------------------------------------------------------
@@ -229,18 +223,17 @@ function begin() {
         alert(
             'Please enter your name.'
         );
-        document
-            .getElementById(
-                'studentName'
-            )
-            .focus();
+        if (nameInput) {
+            nameInput.focus();
+        }
         return;
     }
     // --------------------------------------------------------
-    // RESET TEST
+    // RESET
     // --------------------------------------------------------
     idx = 0;
     answers = {};
+    finished = false;
     seconds =
         test.minutes * 60;
     startTime =
@@ -264,11 +257,11 @@ function begin() {
         'hidden'
     );
     // --------------------------------------------------------
-    // RENDER FIRST QUESTION
+    // RENDER
     // --------------------------------------------------------
     render();
     // --------------------------------------------------------
-    // SHOW INITIAL TIMER
+    // SHOW TIMER
     // --------------------------------------------------------
     updateTimer();
     // --------------------------------------------------------
@@ -289,9 +282,6 @@ function updateTimer() {
     }
     timer.textContent =
         fmt(seconds);
-    // --------------------------------------------------------
-    // LAST 60 SECONDS
-    // --------------------------------------------------------
     if (seconds <= 60) {
         timer.classList.add(
             'urgent'
@@ -302,12 +292,14 @@ function updateTimer() {
 // TIMER TICK
 // ============================================================
 function tick() {
+    if (finished) {
+        return;
+    }
     seconds--;
     updateTimer();
-    // --------------------------------------------------------
-    // TIME FINISHED
-    // --------------------------------------------------------
     if (seconds <= 0) {
+        seconds = 0;
+        updateTimer();
         clearInterval(
             timerId
         );
@@ -386,6 +378,9 @@ function render() {
             function (button) {
                 button.onclick =
                     function () {
+                        if (finished) {
+                            return;
+                        }
                         answers[q.id] =
                             button.dataset.option;
                         render();
@@ -393,12 +388,12 @@ function render() {
             }
         );
     // --------------------------------------------------------
-    // PREVIOUS BUTTON
+    // PREVIOUS
     // --------------------------------------------------------
     prevBtn.disabled =
         idx === 0;
     // --------------------------------------------------------
-    // NEXT BUTTON
+    // NEXT
     // --------------------------------------------------------
     nextBtn.disabled =
         idx ===
@@ -442,6 +437,9 @@ function render() {
             function (button, n) {
                 button.onclick =
                     function () {
+                        if (finished) {
+                            return;
+                        }
                         idx = n;
                         render();
                     };
@@ -453,7 +451,10 @@ function render() {
 // ============================================================
 prevBtn.onclick =
     function () {
-        if (idx > 0) {
+        if (
+            !finished &&
+            idx > 0
+        ) {
             idx--;
             render();
         }
@@ -464,6 +465,7 @@ prevBtn.onclick =
 nextBtn.onclick =
     function () {
         if (
+            !finished &&
             idx <
             test.questions.length - 1
         ) {
@@ -483,6 +485,12 @@ submitBtn.onclick =
 // ============================================================
 function finish(auto) {
     // --------------------------------------------------------
+    // PREVENT DOUBLE SUBMISSION
+    // --------------------------------------------------------
+    if (finished) {
+        return;
+    }
+    // --------------------------------------------------------
     // SAFETY CHECK
     // --------------------------------------------------------
     if (
@@ -494,7 +502,7 @@ function finish(auto) {
         return;
     }
     // --------------------------------------------------------
-    // MANUAL SUBMIT CONFIRMATION
+    // MANUAL CONFIRMATION
     // --------------------------------------------------------
     if (!auto) {
         const confirmed =
@@ -506,13 +514,17 @@ function finish(auto) {
         }
     }
     // --------------------------------------------------------
+    // MARK FINISHED
+    // --------------------------------------------------------
+    finished = true;
+    // --------------------------------------------------------
     // STOP TIMER
     // --------------------------------------------------------
     clearInterval(
         timerId
     );
     // --------------------------------------------------------
-    // CALCULATE CORRECT
+    // CORRECT
     // --------------------------------------------------------
     let correct = 0;
     test.questions.forEach(
@@ -564,8 +576,11 @@ function finish(auto) {
     // UNANSWERED
     // --------------------------------------------------------
     const unanswered =
-        test.questions.length -
-        attempted;
+        Math.max(
+            0,
+            test.questions.length -
+            attempted
+        );
     // --------------------------------------------------------
     // PERCENTAGE
     // --------------------------------------------------------
@@ -582,18 +597,21 @@ function finish(auto) {
     // TIME TAKEN
     // --------------------------------------------------------
     const timeTaken =
-        Math.round(
-            (
-                Date.now() -
-                startTime
-            ) / 1000
+        Math.max(
+            0,
+            Math.round(
+                (
+                    Date.now() -
+                    startTime
+                ) / 1000
+            )
         );
     // --------------------------------------------------------
-    // RESULT OBJECT
+    // RESULT
     // --------------------------------------------------------
     const result = {
         title:
-            test.title,
+            test.title || 'Mock Test',
         name:
             studentName,
         roll:
@@ -637,10 +655,11 @@ function finish(auto) {
         alert(
             'Unable to save your result.'
         );
+        finished = false;
         return;
     }
     // --------------------------------------------------------
-    // OPEN RESULT PAGE
+    // RESULT PAGE
     // --------------------------------------------------------
     window.location.href =
         'result.html';

@@ -1,41 +1,71 @@
+// ============================================================
+// CREATE.JS
+// Text to Mock Test
+// GitHub Pages / No Firebase / No Server
+// ============================================================
 import {
     parseMCQs,
     esc,
     encodeTest
 } from './common.js';
+// ============================================================
+// VARIABLES
+// ============================================================
 let parsed = null;
-const title = document.getElementById('title');
-const minutes = document.getElementById('minutes');
-const source = document.getElementById('source');
-const preview = document.getElementById('preview');
-const msg = document.getElementById('msg');
-const linkBtn = document.getElementById('linkBtn');
-const previewBtn = document.getElementById('previewBtn');
+const title =
+    document.getElementById('title');
+const minutes =
+    document.getElementById('minutes');
+const source =
+    document.getElementById('source');
+const preview =
+    document.getElementById('preview');
+const msg =
+    document.getElementById('msg');
+const linkBtn =
+    document.getElementById('linkBtn');
+const previewBtn =
+    document.getElementById('previewBtn');
 // ============================================================
 // PARSE & PREVIEW
 // ============================================================
 previewBtn.onclick = function () {
     try {
-        parsed = parseMCQs(source.value);
-        if (!parsed || !parsed.length) {
+        parsed = parseMCQs(
+            source.value
+        );
+        // ----------------------------------------------------
+        // No questions found
+        // ----------------------------------------------------
+        if (
+            !parsed ||
+            parsed.length === 0
+        ) {
             msg.innerHTML =
                 '<p class="error">' +
                 '❌ No questions detected.' +
                 '<br><br>' +
-                'Make sure your text contains:' +
+                'Please make sure your text contains:' +
                 '<br>1. Question' +
-                '<br>A) Option' +
-                '<br>B) Option' +
-                '<br>C) Option' +
-                '<br>D) Option' +
-                '<br>Answer: A) Option' +
+                '<br>A) Option A' +
+                '<br>B) Option B' +
+                '<br>C) Option C' +
+                '<br>D) Option D' +
+                '<br>Answer: A) Option A' +
                 '</p>';
             preview.innerHTML = '';
-            linkBtn.classList.add('hidden');
+            linkBtn.classList.add(
+                'hidden'
+            );
             return;
         }
+        // ----------------------------------------------------
+        // Check missing answers
+        // ----------------------------------------------------
         const missing =
-            parsed.filter(q => !q.answer).length;
+            parsed.filter(
+                q => !q.answer
+            ).length;
         msg.innerHTML =
             '<p class="successText">' +
             '✓ ' +
@@ -49,237 +79,310 @@ previewBtn.onclick = function () {
                     : ''
             ) +
             '.</p>';
+        // ----------------------------------------------------
+        // Build preview
+        // ----------------------------------------------------
         preview.innerHTML =
             parsed.map(function (q) {
                 const options =
-                    Object.entries(q.options)
-                        .map(function ([key, value]) {
-                            return (
-                                '<div class="previewOption">' +
-                                '<b>' +
-                                esc(key) +
-                                ') </b>' +
-                                esc(value) +
-                                '</div>'
-                            );
-                        })
-                        .join('');
+                    Object.entries(
+                        q.options
+                    )
+                    .map(function (
+                        [key, value]
+                    ) {
+                        return (
+                            '<div class="previewOption">' +
+                            '<b>' +
+                            esc(key) +
+                            ') </b>' +
+                            esc(value) +
+                            '</div>'
+                        );
+                    })
+                    .join('');
                 return (
                     '<article class="card">' +
                     '<h3>' +
                     q.id +
                     '. ' +
-                    esc(q.question) +
+                    esc(
+                        q.question
+                    ) +
                     '</h3>' +
                     options +
                     '<p class="answerLine">' +
-                    'Correct: <b>' +
+                    'Correct: ' +
+                    '<b>' +
                     esc(
-                        q.answer || 'Not detected'
+                        q.answer ||
+                        'Not detected'
                     ) +
                     '</b>' +
                     '</p>' +
                     '</article>'
                 );
             }).join('');
-        linkBtn.classList.remove('hidden');
+        // ----------------------------------------------------
+        // Show generate button
+        // ----------------------------------------------------
+        linkBtn.classList.remove(
+            'hidden'
+        );
     } catch (error) {
-        console.error('Parse error:', error);
+        console.error(
+            'Parse error:',
+            error
+        );
         msg.innerHTML =
             '<p class="error">' +
             '❌ Error while parsing questions.' +
             '<br><br>' +
-            esc(error.message || String(error)) +
+            esc(
+                error.message ||
+                String(error)
+            ) +
             '</p>';
         preview.innerHTML = '';
-        linkBtn.classList.add('hidden');
+        linkBtn.classList.add(
+            'hidden'
+        );
     }
 };
 // ============================================================
 // GENERATE SHAREABLE LINK
 // ============================================================
-linkBtn.onclick = async function () {
-    if (!parsed || !parsed.length) {
+linkBtn.onclick = function () {
+    if (
+        !parsed ||
+        parsed.length === 0
+    ) {
         alert(
             'Please click Parse & Preview first.'
         );
         return;
     }
+    // --------------------------------------------------------
+    // Disable button
+    // --------------------------------------------------------
     linkBtn.disabled = true;
-    linkBtn.textContent = 'Generating...';
+    linkBtn.textContent =
+        'Generating...';
     try {
+        // ====================================================
+        // CREATE TEST DATA
+        // ====================================================
         const data = {
             v: 1,
             title:
                 title.value.trim() ||
-                'Mock Test',
+                'My Mock Test',
             minutes:
                 Math.max(
                     1,
-                    Number(minutes.value) || 30
+                    Number(
+                        minutes.value
+                    ) || 30
                 ),
             questions:
                 parsed
         };
         // ====================================================
-        // IMPORTANT
-        // Await works with both:
-        // - normal string
-        // - Promise
+        // ENCODE TEST
+        //
+        // IMPORTANT:
+        // common.js encodeTest() MUST be synchronous.
+        //
+        // It should contain:
+        //
+        // export function encodeTest(obj) {
+        //     const json = JSON.stringify(obj);
+        //     return 'u' + encodeURIComponent(json);
+        // }
         // ====================================================
-        let token =
-            await encodeTest(data);
-        // Convert to string only after await
-        token =
-            String(token);
+        const token =
+            encodeTest(data);
         // ====================================================
-        // Detect old [object Promise] problem
+        // SAFETY CHECK
         // ====================================================
+        if (
+            !token ||
+            typeof token !== 'string'
+        ) {
+            throw new Error(
+                'Invalid token generated.'
+            );
+        }
+        // Detect old Promise problem
         if (
             token === '[object Promise]'
         ) {
             throw new Error(
-                'encodeTest() is still returning a Promise. Please make sure the latest common.js is uploaded to GitHub.'
-            );
-        }
-        if (
-            !token ||
-            token === 'undefined' ||
-            token === 'null'
-        ) {
-            throw new Error(
-                'No test token was generated.'
+                'encodeTest is still asynchronous. Please replace common.js with the latest synchronous version.'
             );
         }
         // ====================================================
-        // Create URL
+        // CREATE BASE URL
         // ====================================================
         const baseUrl =
-            location.href
-                .split('#')[0]
+            window.location.origin +
+            window.location.pathname
                 .replace(
                     /index\.html$/,
                     ''
                 );
+        // ====================================================
+        // CREATE STUDENT TEST URL
+        // ====================================================
         const url =
             baseUrl +
             'test.html#t=' +
-            encodeURIComponent(token);
+            token;
         // ====================================================
-        // Share text
+        // SHARE TEXT
         // ====================================================
         const shareText =
             '📝 ' +
             data.title +
-            '\n' +
-            '⏱️ ' +
+            '\n⏱️ ' +
             data.minutes +
             ' minutes' +
-            '\n' +
-            '📚 ' +
+            '\n📚 ' +
             data.questions.length +
             ' questions' +
-            '\n\n' +
-            'Take the mock test here:\n' +
+            '\n\nTake the mock test here:\n' +
             url;
         // ====================================================
-        // SHOW SHARE BOX
+        // DISPLAY SHARE BOX
         // ====================================================
         msg.innerHTML =
             '<div class="shareBox">' +
-            '<b>✅ Shareable Test Link</b>' +
+            '<b>✅ Test Link Generated</b>' +
+            '<br><br>' +
             '<input ' +
             'id="shareUrl" ' +
             'value="' +
             esc(url) +
             '" ' +
             'readonly>' +
+            '<br><br>' +
             '<button id="copyBtn">' +
-            'Copy Link' +
+            '📋 Copy Link' +
             '</button>' +
             '<button id="shareBtn">' +
-            'Share' +
+            '📤 Share' +
             '</button>' +
+            '<br><br>' +
             '<small>' +
-            'Send this link to your students.' +
+            data.questions.length +
+            ' questions • ' +
+            data.minutes +
+            ' minutes' +
+            '<br>' +
+            'No Firebase, server or database required.' +
             '</small>' +
             '</div>' +
             '<p class="successText">' +
-            '✓ Test link generated successfully.' +
+            '✓ Shareable link generated successfully.' +
             '</p>';
         // ====================================================
-        // COPY
+        // COPY BUTTON
         // ====================================================
-        document.getElementById(
-            'copyBtn'
-        ).onclick = async function () {
-            const button = this;
-            const input =
-                document.getElementById(
-                    'shareUrl'
-                );
-            try {
-                await navigator.clipboard.writeText(
-                    url
-                );
-                button.textContent =
-                    'Copied!';
-            } catch (error) {
-                input.focus();
-                input.select();
-                input.setSelectionRange(
-                    0,
-                    input.value.length
-                );
-                try {
-                    document.execCommand('copy');
-                    button.textContent =
-                        'Copied!';
-                } catch (copyError) {
-                    alert(
-                        'Please copy the link manually.'
+        const copyBtn =
+            document.getElementById(
+                'copyBtn'
+            );
+        copyBtn.onclick =
+            async function () {
+                const input =
+                    document.getElementById(
+                        'shareUrl'
                     );
-                }
-            }
-        };
-        // ====================================================
-        // SHARE
-        // ====================================================
-        document.getElementById(
-            'shareBtn'
-        ).onclick = async function () {
-            if (
-                navigator.share
-            ) {
                 try {
-                    await navigator.share({
-                        title:
-                            data.title,
-                        text:
-                            shareText,
-                        url:
+                    await navigator
+                        .clipboard
+                        .writeText(
                             url
-                    });
+                        );
+                    copyBtn.textContent =
+                        '✅ Copied!';
                 } catch (error) {
-                    console.log(
-                        'Share cancelled'
+                    input.focus();
+                    input.select();
+                    input.setSelectionRange(
+                        0,
+                        input.value.length
+                    );
+                    try {
+                        document.execCommand(
+                            'copy'
+                        );
+                        copyBtn.textContent =
+                            '✅ Copied!';
+                    } catch (copyError) {
+                        alert(
+                            'Please copy the link manually.'
+                        );
+                    }
+                }
+            };
+        // ====================================================
+        // SHARE BUTTON
+        // ====================================================
+        const shareBtn =
+            document.getElementById(
+                'shareBtn'
+            );
+        shareBtn.onclick =
+            async function () {
+                if (
+                    navigator.share
+                ) {
+                    try {
+                        await navigator.share({
+                            title:
+                                data.title,
+                            text:
+                                shareText,
+                            url:
+                                url
+                        });
+                    } catch (error) {
+                        console.log(
+                            'Share cancelled.'
+                        );
+                    }
+                    return;
+                }
+                // Browser without Web Share API
+                try {
+                    await navigator
+                        .clipboard
+                        .writeText(
+                            shareText
+                        );
+                    alert(
+                        'Share message copied. Paste it into WhatsApp.'
+                    );
+                } catch (error) {
+                    alert(
+                        shareText
                     );
                 }
-                return;
-            }
-            try {
-                await navigator.clipboard.writeText(
-                    shareText
-                );
-                alert(
-                    'Share text copied. Paste it into WhatsApp.'
-                );
-            } catch (error) {
-                alert(shareText);
-            }
-        };
+            };
+        // ====================================================
+        // DEBUG
+        // ====================================================
         console.log(
-            'Generated URL:',
+            'Test data:',
+            data
+        );
+        console.log(
+            'Token:',
+            token
+        );
+        console.log(
+            'Test URL:',
             url
         );
     } catch (error) {
@@ -290,10 +393,10 @@ linkBtn.onclick = async function () {
         msg.innerHTML =
             '<div class="shareBox">' +
             '<p class="error">' +
-            '❌ Unable to generate the test link.' +
+            '❌ Unable to generate test link.' +
             '</p>' +
             '<p>' +
-            '<b>Error:</b> ' +
+            '<b>Error:</b><br>' +
             esc(
                 error.message ||
                 String(error)
@@ -301,6 +404,9 @@ linkBtn.onclick = async function () {
             '</p>' +
             '</div>';
     }
+    // ========================================================
+    // RESTORE BUTTON
+    // ========================================================
     linkBtn.disabled = false;
     linkBtn.textContent =
         'Generate Shareable Link';
